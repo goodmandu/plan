@@ -122,6 +122,10 @@ nav button .ic{display:block;font-size:22px;line-height:1.1}
 nav button.sel{color:var(--accent)}
 .view{display:none}.view.show{display:block}
 #toast{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);background:var(--text);color:var(--bg);padding:14px 16px;border-radius:14px;font-weight:700;display:none;z-index:20;text-align:center}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:30;padding:24px}
+#modal.show{display:flex}
+#modal .box{background:var(--card);border-radius:20px;padding:22px 20px 16px;width:100%;max-width:400px}
+#modal p{margin:0 0 16px;font-size:18px;font-weight:700;word-break:keep-all}
 </style>
 </head>
 <body>
@@ -158,12 +162,6 @@ nav button.sel{color:var(--accent)}
 <!-- 설정 -->
 <section id="v-set" class="view">
   <h2>설정</h2>
-  <div class="card set">
-    <div class="txt"><b>일정 시작 5분 전 알림</b>
-      <small>앱이 화면에 열려 있을 때만 울려요. 앱을 닫거나 화면이 꺼지면 울리지 않아요.</small></div>
-    <button id="notifySwitch" class="switch" aria-label="알림 켜기/끄기"></button>
-  </div>
-  <div id="notifyMsg" class="hint"></div>
   <div class="card">
     <b>분류 색</b>
     <div class="legend" id="legend"></div>
@@ -177,6 +175,7 @@ nav button.sel{color:var(--accent)}
 </section>
 
 <div id="toast"></div>
+<div id="modal"><div class="box"><p id="mText"></p><div class="btnrow"><button class="btn" id="mNo">취소</button><button class="btn primary" id="mYes">확인</button></div></div></div>
 
 <nav><div class="in">
   <button data-v="now" class="sel"><span class="ic">⏱</span>지금</button>
@@ -190,31 +189,38 @@ const DAYS = ['일','월','화','수','목','금','토'];
 const DAY_ORDER = [1,2,3,4,5,6,0];
 const CATS = { work:'근무', exercise:'운동', study:'자기 개발', meal:'식사·준비', rest:'휴식·수면' };
 const KEY_SCHED = 'lifeplan.schedule.v1';
-const KEY_SET = 'lifeplan.settings.v1';
 const KEY_DONE = 'lifeplan.done.v1';
 
 /* ---------- 기본 일정 ---------- */
 const I = (s,e,t,c) => ({s,e,t,c});
 function defaults(){
-  const wedThu = [
-    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사, 준비','meal'),
-    I('09:00','10:30','운동 또는 요가','exercise'), I('10:30','12:30','자기 개발','study'),
-    I('12:30','13:30','점심 (집밥 위주)','meal'), I('13:30','15:00','휴식, 출근 준비','rest'),
-    I('15:00','23:00','학원 근무','work'), I('23:00','24:00','귀가, 씻기, 휴식','rest')];
-  const fri = [
-    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사, 준비','meal'),
-    I('09:00','10:30','운동 또는 요가','exercise'), I('10:30','12:30','자기 개발','study'),
-    I('12:30','13:30','점심 (집밥 위주)','meal'), I('13:30','15:00','휴식, 출근 준비','rest'),
-    I('15:00','22:00','학원 근무','work'), I('22:00','24:00','귀가, 씻기, 휴식','rest')];
-  const weekend = [
-    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사','meal'),
-    I('09:00','09:30','가벼운 요가, 스트레칭','exercise'), I('09:30','11:00','출근 준비, 이동','meal'),
-    I('11:00','22:00','학원 근무','work'), I('22:00','24:00','귀가, 휴식','rest')];
+  const SD = '자기 개발 (독서 및 여가)', WATER = '물 500ml 마시기, 계단 운동';
   const off = [
-    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사','meal'),
-    I('09:00','11:00','운동','exercise'), I('11:00','13:00','점심, 휴식','meal'),
-    I('13:00','16:00','자기 개발','study'), I('16:00','22:00','자유 시간, 휴식','rest'),
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','운동 또는 요가','exercise'),
+    I('09:00','10:30',SD,'study'), I('10:30','12:30','낮잠','rest'),
+    I('12:30','16:00',SD,'study'), I('16:00','22:00','자유 시간, 휴식','rest'),
     I('22:00','24:00','정리, 다음 주 준비','meal')];
+  const wedThu = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','운동 또는 요가','exercise'),
+    I('09:00','10:30',SD,'study'), I('10:30','12:30','낮잠','rest'),
+    I('12:30','13:30','점심','meal'), I('13:30','15:00','휴식, 출근 준비','rest'),
+    I('15:00','15:30',WATER,'exercise'), I('15:30','18:30','수업 준비','work'),
+    I('18:30','19:00',WATER,'exercise'), I('19:00','23:00','학원 근무','work'),
+    I('23:00','24:00','귀가, 독서, 취침','rest')];
+  const fri = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','운동 또는 요가','exercise'),
+    I('09:00','10:30',SD,'study'), I('10:30','12:30','낮잠','rest'),
+    I('12:30','13:30','점심','meal'), I('13:30','15:00','휴식','rest'),
+    I('15:00','15:30',WATER,'exercise'), I('15:30','18:00','학원 근무','work'),
+    I('18:00','18:30',WATER,'exercise'), I('18:30','22:00','학원 근무','work'),
+    I('22:00','24:00','귀가, 독서, 취침','rest')];
+  const weekend = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','운동 또는 요가','exercise'),
+    I('09:00','10:30',SD,'study'), I('10:30','11:00','출근 준비, 이동','meal'),
+    I('11:00','14:00','학원 근무','work'),
+    I('14:00','14:30',WATER,'exercise'), I('14:30','18:00','학원 근무','work'),
+    I('18:00','18:30',WATER,'exercise'), I('18:30','22:00','학원 근무','work'),
+    I('22:00','24:00','귀가, 독서, 취침','rest')];
   const c = a => a.map(x => ({...x}));
   return {0:c(weekend),1:c(off),2:c(off),3:c(wedThu),4:c(wedThu),5:c(fri),6:c(weekend)};
 }
@@ -228,7 +234,6 @@ function loadSchedule(){
   return defaults();
 }
 let schedule = loadSchedule();
-let settings = readJSON(KEY_SET, {notify:false});
 let done = readJSON(KEY_DONE, {});
 
 /* ---------- 시간 계산 (한국 시간) ---------- */
@@ -334,9 +339,9 @@ function renderDays(n){
   $('days').innerHTML = DAY_ORDER.map(d =>
     `<button data-d="${d}" class="${d===selDay?'sel':''} ${d===n.dow?'today':''}">${DAYS[d]}</button>`).join('');
 }
-$('days').addEventListener('click', e => {
+$('days').addEventListener('click', async e => {
   const b = e.target.closest('button[data-d]'); if (!b) return;
-  if (editing && !confirm('편집 중인 내용을 저장하지 않고 다른 요일로 갈까요?')) return;
+  if (editing && !await ask('편집 중인 내용을 저장하지 않고 다른 요일로 갈까요?')) return;
   editing = false; selDay = +b.dataset.d; renderWeek(seoulNow(), true);
 });
 
@@ -367,9 +372,9 @@ function renderWeek(n, force){
       에 <button class="btn" id="copyBtn">복사</button></div>`;
   $('dayBody').innerHTML = html;
   $('editBtn').onclick = () => { editing = true; draft = sorted(schedule[selDay]).map(x => ({...x})); renderWeek(seoulNow(), true); };
-  $('copyBtn').onclick = () => {
+  $('copyBtn').onclick = async () => {
     const to = +$('copyTo').value;
-    if (!confirm(`${DAYS[to]}요일 일정을 ${DAYS[selDay]}요일 일정으로 바꿀까요?`)) return;
+    if (!await ask(`${DAYS[to]}요일 일정을 ${DAYS[selDay]}요일 일정으로 바꿀까요?`)) return;
     schedule[to] = schedule[selDay].map(x => ({...x})); save();
     toast(`${DAYS[to]}요일에 복사했어요`);
   };
@@ -454,50 +459,20 @@ function save(){ return writeJSON(KEY_SCHED, schedule); }
 
 /* ---------- 설정 ---------- */
 $('legend').innerHTML = Object.entries(CATS).map(([k,v]) => `<span class="chip c-${k}">${v}</span>`).join('');
-function renderSettings(){ $('notifySwitch').classList.toggle('on', !!settings.notify); }
-$('notifySwitch').onclick = async () => {
-  const msg = $('notifyMsg');
-  if (settings.notify){ settings.notify = false; writeJSON(KEY_SET, settings); renderSettings(); msg.textContent = '알림을 껐어요.'; return; }
-  if (!('Notification' in window)){
-    msg.textContent = '이 화면에서는 알림을 쓸 수 없어요. 아이폰은 홈 화면에 추가한 앱에서만 알림이 돼요(iOS 16.4 이상).';
-    return;
-  }
-  let p = Notification.permission;
-  if (p === 'default') p = await Notification.requestPermission();
-  if (p !== 'granted'){ msg.textContent = '알림 권한이 꺼져 있어요. 휴대폰 설정에서 이 앱의 알림을 허용해 주세요.'; return; }
-  settings.notify = true; writeJSON(KEY_SET, settings); renderSettings();
-  msg.textContent = '켜졌어요. 앱이 화면에 열려 있는 동안 일정 5분 전에 알려 드려요.';
-};
-$('resetBtn').onclick = () => {
-  if (!confirm('고친 일정을 모두 지우고 처음 일정으로 되돌릴까요?')) return;
+$('resetBtn').onclick = async () => {
+  if (!await ask('고친 일정을 모두 지우고 처음 일정으로 되돌릴까요?')) return;
   schedule = defaults(); save(); editing = false; toast('처음 일정으로 되돌렸어요');
   tick(); renderWeek(seoulNow(), true);
 };
 
-/* ---------- 5분 전 알림 (앱이 열려 있을 때) ---------- */
-const fired = new Set();
-function checkAlarm(n){
-  if (!settings.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
-  const cands = schedule[n.dow].map(it => ({it, start: toMin(it.s)*60}));
-  if (n.sec > 86100) schedule[(n.dow+1)%7].forEach(it => cands.push({it, start: toMin(it.s)*60 + 86400}));
-  for (const {it, start} of cands){
-    const d = start - n.sec;
-    if (d > 0 && d <= 300){
-      const k = dateKey(n) + '@' + start;
-      if (fired.has(k)) continue;
-      fired.add(k);
-      const title = `${Math.ceil(d/60)}분 후: ${it.t}`, body = `${it.s} – ${it.e} · ${CATS[it.c]||''}`;
-      toast('🔔 ' + title);
-      if (navigator.vibrate) navigator.vibrate([200,100,200]);
-      const opt = {body, icon:'icons/icon-192.png', badge:'icons/icon-192.png', tag:k};
-      if (navigator.serviceWorker && navigator.serviceWorker.controller)
-        navigator.serviceWorker.ready.then(r => r.showNotification(title, opt)).catch(() => {});
-      else try { new Notification(title, opt); } catch(e){}
-    }
-  }
-}
-
 /* ---------- 공통 ---------- */
+function ask(text){
+  return new Promise(res => {
+    const m = $('modal'); $('mText').textContent = text; m.classList.add('show');
+    const end = v => { m.classList.remove('show'); res(v); };
+    $('mYes').onclick = () => end(true); $('mNo').onclick = () => end(false);
+  });
+}
 let toastTimer;
 function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3500); }
 
@@ -508,7 +483,6 @@ document.querySelector('nav').addEventListener('click', e => {
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x === b));
   document.querySelectorAll('.view').forEach(x => x.classList.toggle('show', x.id === 'v-' + view));
   if (view === 'week'){ if (!editing) selDay = seoulNow().dow; renderWeek(seoulNow(), true); }
-  if (view === 'set') renderSettings();
   window.scrollTo(0, 0);
 });
 
@@ -518,7 +492,6 @@ function tick(){
   renderReminders(n);
   renderNow(n);
   if (view === 'week' && !editing) renderWeek(n);
-  checkAlarm(n);
 }
 tick();
 setInterval(tick, 1000);
