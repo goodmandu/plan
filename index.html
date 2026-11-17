@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>생활 계획표</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="계획표">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --text:#1b1d22; --sub:#6b7280; --line:#e4e6eb; --accent:#4f6ef7;
+  --work:#e5484d; --exercise:#2f9e63; --study:#3e63dd; --meal:#e8930c; --rest:#8e4ec6;
+  --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1115; --card:#1a1d23; --text:#eceef2; --sub:#9aa1ad; --line:#2b2f37; --accent:#7b93ff;
+    --work:#ff6b6f; --exercise:#4cc38a; --study:#7b93ff; --meal:#ffb224; --rest:#b884f0;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  font-size:18px; line-height:1.45;
+  padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 92px);
+  max-width:560px; margin:0 auto;
+}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.c-work{--c:var(--work)} .c-exercise{--c:var(--exercise)} .c-study{--c:var(--study)}
+.c-meal{--c:var(--meal)} .c-rest{--c:var(--rest)}
+
+header{margin:4px 2px 14px}
+#date{font-size:19px;color:var(--sub);font-weight:600}
+#clock{font-size:44px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.15}
+
+.card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:12px;position:relative;overflow:hidden;border:1px solid var(--line)}
+.tint::before{content:"";position:absolute;inset:0;background:var(--c,var(--accent));opacity:.10;pointer-events:none}
+.label{font-size:15px;color:var(--sub);font-weight:700;margin-bottom:6px}
+.chip{display:inline-block;font-size:14px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--c,var(--accent));color:#fff}
+@media (prefers-color-scheme: dark){ .chip{color:#111} }
+
+#nowCard{border:2px solid var(--c,var(--line))}
+#nowTitle{font-size:34px;font-weight:800;line-height:1.2;margin:10px 0 4px;word-break:keep-all}
+#nowRange{font-size:18px;color:var(--sub);font-variant-numeric:tabular-nums}
+#nowLeft{font-size:22px;font-weight:700;margin-top:12px}
+.progress{height:14px;border-radius:999px;background:var(--line);margin-top:10px;overflow:hidden}
+.progress>div{height:100%;width:0;background:var(--c,var(--accent));border-radius:999px;transition:width .6s}
+
+#nextTitle{font-size:24px;font-weight:800;margin:6px 0 2px;word-break:keep-all}
+#nextInfo{color:var(--sub);font-size:17px;font-variant-numeric:tabular-nums}
+
+.remind{display:flex;gap:12px;align-items:center;border-left:6px solid var(--accent)}
+.remind .txt{flex:1;font-weight:700;font-size:17px;word-break:keep-all}
+.remind .txt small{display:block;color:var(--sub);font-weight:600;font-size:14px}
+.remind button{border:0;border-radius:12px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;white-space:nowrap}
+.remind.done{opacity:.55}
+.remind.done .txt{text-decoration:line-through}
+.remind.done button{background:var(--line);color:var(--text)}
+
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:4px 0 14px}
+.days button{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:12px 0;font-size:18px;font-weight:700;position:relative}
+.days button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+.days button.today::after{content:"";position:absolute;left:50%;bottom:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:currentColor}
+
+h2{font-size:22px;margin:6px 2px 12px}
+.list{list-style:none;margin:0;padding:0}
+.row{display:flex;gap:12px;align-items:stretch;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px;position:relative;overflow:hidden}
+.row .bar{width:6px;border-radius:6px;background:var(--c)}
+.row .time{width:62px;font-weight:800;font-variant-numeric:tabular-nums;font-size:17px;line-height:1.3}
+.row .time span{color:var(--sub);font-weight:600}
+.row .info{flex:1;min-width:0}
+.row .title{font-weight:700;font-size:19px;word-break:keep-all}
+.row .meta{color:var(--sub);font-size:14px;margin-top:4px}
+.row.now{border:2px solid var(--c)}
+.row.now::before{content:"";position:absolute;inset:0;background:var(--c);opacity:.12;pointer-events:none}
+.row.now .title::after{content:"지금";margin-left:8px;font-size:13px;font-weight:800;color:#fff;background:var(--c);padding:2px 8px;border-radius:999px;vertical-align:2px}
+.row.past{opacity:.5}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+
+.btn{border:0;border-radius:14px;padding:13px 16px;font-weight:700;font-size:17px;background:var(--line)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.danger{background:transparent;color:var(--work);border:1px solid var(--work)}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btnrow .btn{flex:1}
+
+.erow{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:16px;padding:12px;margin-bottom:8px}
+.erow .line{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.erow input,.erow select,.copy select{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 10px;font-size:17px;min-width:0}
+.erow input[type=time]{flex:1}
+.erow input[type=text]{width:100%}
+.erow select{flex:1}
+.erow .del{border:0;background:transparent;color:var(--work);font-weight:700;padding:9px 10px}
+.hint{font-size:14px;color:var(--sub);margin:4px 2px 10px}
+.msg{color:var(--work);font-weight:700;font-size:15px;margin-top:10px;white-space:pre-line}
+.copy{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:16px;color:var(--sub)}
+.copy select{flex:1}
+
+.set{display:flex;align-items:center;gap:12px}
+.set .txt{flex:1}
+.set .txt b{display:block;font-size:18px}
+.set .txt small{color:var(--sub);font-size:14px;display:block;margin-top:2px}
+.switch{width:56px;height:32px;border-radius:999px;background:var(--line);border:0;position:relative;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch.on{background:var(--exercise)}
+.switch.on::after{left:27px}
+
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:10}
+nav .in{display:flex;width:100%;max-width:560px}
+nav button{flex:1;border:0;background:transparent;padding:12px 0 14px;font-size:16px;font-weight:700;color:var(--sub)}
+nav button .ic{display:block;font-size:22px;line-height:1.1}
+nav button.sel{color:var(--accent)}
+.view{display:none}.view.show{display:block}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);background:var(--text);color:var(--bg);padding:14px 16px;border-radius:14px;font-weight:700;display:none;z-index:20;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div id="date"></div>
+  <div id="clock"></div>
+</header>
+
+<!-- 지금 -->
+<section id="v-now" class="view show">
+  <div id="reminders"></div>
+  <div id="nowCard" class="card tint">
+    <div class="label">지금 할 일 <span id="nowChip" class="chip"></span></div>
+    <div id="nowTitle"></div>
+    <div id="nowRange"></div>
+    <div id="nowLeft"></div>
+    <div class="progress"><div id="nowBar"></div></div>
+  </div>
+  <div id="nextCard" class="card">
+    <div class="label">다음 일정 <span id="nextChip" class="chip"></span></div>
+    <div id="nextTitle"></div>
+    <div id="nextInfo"></div>
+  </div>
+</section>
+
+<!-- 시간표 -->
+<section id="v-week" class="view">
+  <div class="days" id="days"></div>
+  <h2 id="dayTitle"></h2>
+  <div id="dayBody"></div>
+</section>
+
+<!-- 설정 -->
+<section id="v-set" class="view">
+  <h2>설정</h2>
+  <div class="card set">
+    <div class="txt"><b>일정 시작 5분 전 알림</b>
+      <small>앱이 화면에 열려 있을 때만 울려요. 앱을 닫거나 화면이 꺼지면 울리지 않아요.</small></div>
+    <button id="notifySwitch" class="switch" aria-label="알림 켜기/끄기"></button>
+  </div>
+  <div id="notifyMsg" class="hint"></div>
+  <div class="card">
+    <b>분류 색</b>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="card">
+    <b>일정 초기화</b>
+    <div class="hint">고친 일정을 모두 지우고 처음 일정으로 되돌려요.</div>
+    <button id="resetBtn" class="btn danger">처음 일정으로 되돌리기</button>
+  </div>
+  <div class="hint">일정은 이 휴대폰 안에만 저장돼요. 다른 기기와 공유되지 않아요.</div>
+</section>
+
+<div id="toast"></div>
+
+<nav><div class="in">
+  <button data-v="now" class="sel"><span class="ic">⏱</span>지금</button>
+  <button data-v="week"><span class="ic">🗓</span>시간표</button>
+  <button data-v="set"><span class="ic">⚙︎</span>설정</button>
+</div></nav>
+
+<script>
+"use strict";
+const DAYS = ['일','월','화','수','목','금','토'];
+const DAY_ORDER = [1,2,3,4,5,6,0];
+const CATS = { work:'근무', exercise:'운동', study:'자기 개발', meal:'식사·준비', rest:'휴식·수면' };
+const KEY_SCHED = 'lifeplan.schedule.v1';
+const KEY_SET = 'lifeplan.settings.v1';
+const KEY_DONE = 'lifeplan.done.v1';
+
+/* ---------- 기본 일정 ---------- */
+const I = (s,e,t,c) => ({s,e,t,c});
+function defaults(){
+  const wedThu = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사, 준비','meal'),
+    I('09:00','10:30','운동 또는 요가','exercise'), I('10:30','12:30','자기 개발','study'),
+    I('12:30','13:30','점심 (집밥 위주)','meal'), I('13:30','15:00','휴식, 출근 준비','rest'),
+    I('15:00','23:00','학원 근무','work'), I('23:00','24:00','귀가, 씻기, 휴식','rest')];
+  const fri = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사, 준비','meal'),
+    I('09:00','10:30','운동 또는 요가','exercise'), I('10:30','12:30','자기 개발','study'),
+    I('12:30','13:30','점심 (집밥 위주)','meal'), I('13:30','15:00','휴식, 출근 준비','rest'),
+    I('15:00','22:00','학원 근무','work'), I('22:00','24:00','귀가, 씻기, 휴식','rest')];
+  const weekend = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사','meal'),
+    I('09:00','09:30','가벼운 요가, 스트레칭','exercise'), I('09:30','11:00','출근 준비, 이동','meal'),
+    I('11:00','22:00','학원 근무','work'), I('22:00','24:00','귀가, 휴식','rest')];
+  const off = [
+    I('00:00','08:00','수면','rest'), I('08:00','09:00','아침 식사','meal'),
+    I('09:00','11:00','운동','exercise'), I('11:00','13:00','점심, 휴식','meal'),
+    I('13:00','16:00','자기 개발','study'), I('16:00','22:00','자유 시간, 휴식','rest'),
+    I('22:00','24:00','정리, 다음 주 준비','meal')];
+  const c = a => a.map(x => ({...x}));
+  return {0:c(weekend),1:c(off),2:c(off),3:c(wedThu),4:c(wedThu),5:c(fri),6:c(weekend)};
+}
+
+/* ---------- 저장 ---------- */
+function readJSON(k, fb){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; }catch(e){ return fb; } }
+function writeJSON(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+function loadSchedule(){
+  const v = readJSON(KEY_SCHED, null);
+  if (v && [0,1,2,3,4,5,6].every(d => Array.isArray(v[d]))) return v;
+  return defaults();
+}
+let schedule = loadSchedule();
+let settings = readJSON(KEY_SET, {notify:false});
+let done = readJSON(KEY_DONE, {});
+
+/* ---------- 시간 계산 (한국 시간) ---------- */
+const fmt = new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Seoul', year:'numeric', month:'numeric', day:'numeric',
+  weekday:'short', hour:'numeric', minute:'numeric', second:'numeric', hourCycle:'h23'});
+const WD = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+function seoulNow(){
+  const p = {}; for (const x of fmt.formatToParts(new Date())) p[x.type] = x.value;
+  const h = (+p.hour) % 24, mi = +p.minute, s = +p.second;
+  return {y:+p.year, m:+p.month, d:+p.day, dow:WD[p.weekday], h, mi, s, sec:h*3600+mi*60+s};
+}
+const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+const pad = n => String(n).padStart(2,'0');
+const sorted = arr => [...arr].sort((a,b) => toMin(a.s) - toMin(b.s));
+function fmtDur(sec){
+  const m = Math.max(1, Math.ceil(sec/60)), h = Math.floor(m/60), r = m%60;
+  if (!h) return r + '분';
+  return r ? `${h}시간 ${r}분` : `${h}시간`;
+}
+function durText(it){ return fmtDur((toMin(it.e)-toMin(it.s))*60); }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dateKey = n => `${n.y}-${pad(n.m)}-${pad(n.d)}`;
+function currentOf(items, sec){ return items.find(it => toMin(it.s)*60 <= sec && sec < toMin(it.e)*60) || null; }
+
+/* ---------- 화면: 지금 ---------- */
+const $ = id => document.getElementById(id);
+function setCat(el, c){ for (const k in CATS) el.classList.remove('c-'+k); if (c) el.classList.add('c-'+c); }
+
+function renderHeader(n){
+  $('date').textContent = `${n.y}년 ${n.m}월 ${n.d}일 ${DAYS[n.dow]}요일`;
+  $('clock').textContent = `${pad(n.h)}:${pad(n.mi)}:${pad(n.s)}`;
+}
+
+function renderNow(n){
+  const items = sorted(schedule[n.dow]);
+  const cur = currentOf(items, n.sec);
+  const card = $('nowCard');
+  if (cur){
+    setCat(card, cur.c);
+    $('nowChip').textContent = CATS[cur.c] || '';
+    $('nowChip').style.display = '';
+    $('nowTitle').textContent = cur.t;
+    $('nowRange').textContent = `${cur.s} – ${cur.e}`;
+    const st = toMin(cur.s)*60, en = toMin(cur.e)*60;
+    $('nowLeft').textContent = `${fmtDur(en - n.sec)} 남음`;
+    $('nowBar').style.width = Math.min(100, (n.sec - st) / (en - st) * 100).toFixed(1) + '%';
+  } else {
+    setCat(card, null);
+    $('nowChip').style.display = 'none';
+    $('nowTitle').textContent = '정해진 일정 없음';
+    $('nowRange').textContent = '빈 시간이에요';
+    $('nowLeft').textContent = '';
+    $('nowBar').style.width = '0%';
+  }
+
+  // 다음 일정
+  let nxt = items.find(it => toMin(it.s)*60 > n.sec), tomorrow = false;
+  if (!nxt){ const t = sorted(schedule[(n.dow+1)%7]); if (t.length){ nxt = t[0]; tomorrow = true; } }
+  const nc = $('nextCard');
+  if (nxt){
+    setCat(nc, nxt.c);
+    $('nextChip').textContent = CATS[nxt.c] || ''; $('nextChip').style.display = '';
+    $('nextTitle').textContent = nxt.t;
+    const start = (toMin(nxt.s) + (tomorrow ? 1440 : 0)) * 60;
+    $('nextInfo').textContent = `${tomorrow ? '내일 ' : ''}${nxt.s} – ${nxt.e} · ${fmtDur(start - n.sec)} 후 시작`;
+  } else {
+    setCat(nc, null); $('nextChip').style.display = 'none';
+    $('nextTitle').textContent = '다음 일정 없음'; $('nextInfo').textContent = '';
+  }
+  return cur;
+}
+
+/* ---------- 알림 문구 ---------- */
+function renderReminders(n){
+  const list = [];
+  if (n.dow === 1) list.push({id:'weekly', t:'카드 앱에서 지난주 사용액 확인하기', sub:'매주 월요일'});
+  if (n.d === 10) list.push({id:'payday', t:'월급날: 카드 예산 점검, 남는 돈 상환·이체', sub:'매월 10일'});
+  const sig = dateKey(n) + list.map(r => r.id + (done[dateKey(n)+':'+r.id] ? 1 : 0)).join();
+  const box = $('reminders');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = list.map(r => {
+    const k = dateKey(n)+':'+r.id, ok = !!done[k];
+    return `<div class="card remind ${ok?'done':''}"><div class="txt"><small>🔔 ${r.sub}</small>${esc(r.t)}</div>
+      <button data-k="${k}">${ok ? '완료됨' : '확인'}</button></div>`;
+  }).join('');
+}
+$('reminders').addEventListener('click', e => {
+  const b = e.target.closest('button[data-k]'); if (!b) return;
+  const k = b.dataset.k;
+  if (done[k]) delete done[k]; else done[k] = true;
+  // 60일 지난 기록은 정리
+  const cut = Date.now() - 60*864e5;
+  for (const key in done){ const d = Date.parse(key.split(':')[0]); if (d && d < cut) delete done[key]; }
+  writeJSON(KEY_DONE, done);
+  tick();
+});
+
+/* ---------- 화면: 시간표 ---------- */
+let selDay = seoulNow().dow, editing = false, draft = null, lastDayKey = '';
+
+function renderDays(n){
+  $('days').innerHTML = DAY_ORDER.map(d =>
+    `<button data-d="${d}" class="${d===selDay?'sel':''} ${d===n.dow?'today':''}">${DAYS[d]}</button>`).join('');
+}
+$('days').addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]'); if (!b) return;
+  if (editing && !confirm('편집 중인 내용을 저장하지 않고 다른 요일로 갈까요?')) return;
+  editing = false; selDay = +b.dataset.d; renderWeek(seoulNow(), true);
+});
+
+function renderWeek(n, force){
+  const items = sorted(schedule[selDay]);
+  const cur = selDay === n.dow ? currentOf(items, n.sec) : null;
+  const key = `${selDay}|${n.dow}|${cur ? cur.s : '-'}|${editing}`;
+  if (!force && key === lastDayKey) return;
+  lastDayKey = key;
+  renderDays(n);
+  $('dayTitle').textContent = `${DAYS[selDay]}요일 시간표${selDay===n.dow?' (오늘)':''}`;
+  if (editing){ renderEditor(); return; }
+
+  const nowMin = n.sec/60;
+  let html = '<ul class="list">' + items.map(it => {
+    const isNow = cur === it;
+    const past = selDay === n.dow && toMin(it.e) <= nowMin;
+    return `<li class="row c-${it.c} ${isNow?'now':''} ${past?'past':''}">
+      <div class="bar"></div>
+      <div class="time">${it.s}<br><span>${it.e}</span></div>
+      <div class="info"><div class="title">${esc(it.t)}</div>
+      <div class="meta"><span class="chip">${CATS[it.c]||''}</span> &nbsp;${durText(it)}</div></div></li>`;
+  }).join('') + '</ul>';
+  if (!items.length) html = '<div class="hint">등록된 일정이 없어요.</div>';
+  html += `<div class="btnrow"><button class="btn primary" id="editBtn">✏️ 이 요일 일정 편집</button></div>
+    <div class="copy">이 요일 일정을
+      <select id="copyTo">${DAY_ORDER.filter(d=>d!==selDay).map(d=>`<option value="${d}">${DAYS[d]}요일</option>`).join('')}</select>
+      에 <button class="btn" id="copyBtn">복사</button></div>`;
+  $('dayBody').innerHTML = html;
+  $('editBtn').onclick = () => { editing = true; draft = sorted(schedule[selDay]).map(x => ({...x})); renderWeek(seoulNow(), true); };
+  $('copyBtn').onclick = () => {
+    const to = +$('copyTo').value;
+    if (!confirm(`${DAYS[to]}요일 일정을 ${DAYS[selDay]}요일 일정으로 바꿀까요?`)) return;
+    schedule[to] = schedule[selDay].map(x => ({...x})); save();
+    toast(`${DAYS[to]}요일에 복사했어요`);
+  };
+}
+
+const catOptions = c => Object.entries(CATS).map(([k,v]) => `<option value="${k}" ${k===c?'selected':''}>${v}</option>`).join('');
+const toInput = t => t === '24:00' ? '00:00' : t;
+
+function renderEditor(msg){
+  $('dayBody').innerHTML =
+    `<div class="hint">끝 시간을 <b>00:00</b>으로 넣으면 '자정(24:00)'으로 저장돼요.</div>
+    <ul class="list" id="elist">` + draft.map((it,i) => `
+    <li class="erow c-${it.c}" data-i="${i}">
+      <div class="line"><input type="time" class="es" value="${toInput(it.s)}"> ~ <input type="time" class="ee" value="${toInput(it.e)}"></div>
+      <div class="line"><input type="text" class="et" value="${esc(it.t)}" placeholder="일정 이름"></div>
+      <div class="line" style="margin:0"><select class="ec">${catOptions(it.c)}</select><button class="del">삭제</button></div>
+    </li>`).join('') + `</ul>
+    <button class="btn" id="addBtn" style="width:100%">＋ 일정 추가</button>
+    <div class="msg" id="emsg">${msg ? esc(msg) : ''}</div>
+    <div class="btnrow"><button class="btn" id="cancelBtn">취소</button><button class="btn primary" id="saveBtn">저장</button></div>`;
+
+  const el = $('elist');
+  el.addEventListener('change', e => {
+    readDraft();
+    if (e.target.classList.contains('ec')){ const li = e.target.closest('.erow'); setCat(li, e.target.value); }
+  });
+  el.addEventListener('click', e => {
+    if (!e.target.classList.contains('del')) return;
+    readDraft();
+    draft.splice(+e.target.closest('.erow').dataset.i, 1);
+    renderEditor();
+  });
+  $('addBtn').onclick = () => {
+    readDraft();
+    const last = sorted(draft).pop();
+    const s = last ? Math.min(toMin(last.e), 1380) : 480;
+    const e = Math.min(s + 60, 1440);
+    const t = m => m === 1440 ? '24:00' : `${pad(Math.floor(m/60))}:${pad(m%60)}`;
+    draft.push({s:t(s), e:t(e), t:'', c:'rest'});
+    renderEditor();
+    const inputs = document.querySelectorAll('#elist .et'); inputs[inputs.length-1].focus();
+  };
+  $('cancelBtn').onclick = () => { editing = false; renderWeek(seoulNow(), true); };
+  $('saveBtn').onclick = saveDraft;
+}
+
+function readDraft(){
+  document.querySelectorAll('#elist .erow').forEach(li => {
+    const it = draft[+li.dataset.i];
+    it.s = li.querySelector('.es').value;
+    it.e = li.querySelector('.ee').value;
+    it.t = li.querySelector('.et').value;
+    it.c = li.querySelector('.ec').value;
+  });
+}
+
+function saveDraft(){
+  readDraft();
+  const errs = [];
+  const items = draft.map((it, i) => {
+    const x = {...it, t: it.t.trim()};
+    if (x.e === '00:00') x.e = '24:00';
+    if (!x.s || !x.e) errs.push(`${i+1}번째 일정: 시간을 넣어 주세요.`);
+    else if (toMin(x.s) >= toMin(x.e)) errs.push(`${i+1}번째 일정(${x.t||'이름 없음'}): 끝 시간이 시작 시간보다 늦어야 해요.`);
+    if (!x.t) errs.push(`${i+1}번째 일정: 이름을 넣어 주세요.`);
+    return x;
+  });
+  if (!errs.length){
+    const s = sorted(items);
+    for (let i = 0; i < s.length-1; i++)
+      if (toMin(s[i].e) > toMin(s[i+1].s)) errs.push(`'${s[i].t}'(${s[i].s}–${s[i].e})와 '${s[i+1].t}'(${s[i+1].s}–${s[i+1].e}) 시간이 겹쳐요.`);
+  }
+  if (errs.length){ renderEditor(errs.join('\n')); $('emsg').scrollIntoView({block:'center'}); return; }
+  schedule[selDay] = sorted(items);
+  if (!save()) { renderEditor('저장하지 못했어요. 휴대폰 저장 공간이나 개인정보 보호 모드를 확인해 주세요.'); return; }
+  editing = false; draft = null;
+  toast('저장했어요');
+  tick(); renderWeek(seoulNow(), true);
+}
+
+function save(){ return writeJSON(KEY_SCHED, schedule); }
+
+/* ---------- 설정 ---------- */
+$('legend').innerHTML = Object.entries(CATS).map(([k,v]) => `<span class="chip c-${k}">${v}</span>`).join('');
+function renderSettings(){ $('notifySwitch').classList.toggle('on', !!settings.notify); }
+$('notifySwitch').onclick = async () => {
+  const msg = $('notifyMsg');
+  if (settings.notify){ settings.notify = false; writeJSON(KEY_SET, settings); renderSettings(); msg.textContent = '알림을 껐어요.'; return; }
+  if (!('Notification' in window)){
+    msg.textContent = '이 화면에서는 알림을 쓸 수 없어요. 아이폰은 홈 화면에 추가한 앱에서만 알림이 돼요(iOS 16.4 이상).';
+    return;
+  }
+  let p = Notification.permission;
+  if (p === 'default') p = await Notification.requestPermission();
+  if (p !== 'granted'){ msg.textContent = '알림 권한이 꺼져 있어요. 휴대폰 설정에서 이 앱의 알림을 허용해 주세요.'; return; }
+  settings.notify = true; writeJSON(KEY_SET, settings); renderSettings();
+  msg.textContent = '켜졌어요. 앱이 화면에 열려 있는 동안 일정 5분 전에 알려 드려요.';
+};
+$('resetBtn').onclick = () => {
+  if (!confirm('고친 일정을 모두 지우고 처음 일정으로 되돌릴까요?')) return;
+  schedule = defaults(); save(); editing = false; toast('처음 일정으로 되돌렸어요');
+  tick(); renderWeek(seoulNow(), true);
+};
+
+/* ---------- 5분 전 알림 (앱이 열려 있을 때) ---------- */
+const fired = new Set();
+function checkAlarm(n){
+  if (!settings.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
+  const cands = schedule[n.dow].map(it => ({it, start: toMin(it.s)*60}));
+  if (n.sec > 86100) schedule[(n.dow+1)%7].forEach(it => cands.push({it, start: toMin(it.s)*60 + 86400}));
+  for (const {it, start} of cands){
+    const d = start - n.sec;
+    if (d > 0 && d <= 300){
+      const k = dateKey(n) + '@' + start;
+      if (fired.has(k)) continue;
+      fired.add(k);
+      const title = `${Math.ceil(d/60)}분 후: ${it.t}`, body = `${it.s} – ${it.e} · ${CATS[it.c]||''}`;
+      toast('🔔 ' + title);
+      if (navigator.vibrate) navigator.vibrate([200,100,200]);
+      const opt = {body, icon:'icons/icon-192.png', badge:'icons/icon-192.png', tag:k};
+      if (navigator.serviceWorker && navigator.serviceWorker.controller)
+        navigator.serviceWorker.ready.then(r => r.showNotification(title, opt)).catch(() => {});
+      else try { new Notification(title, opt); } catch(e){}
+    }
+  }
+}
+
+/* ---------- 공통 ---------- */
+let toastTimer;
+function toast(t){ const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3500); }
+
+let view = 'now';
+document.querySelector('nav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-v]'); if (!b) return;
+  view = b.dataset.v;
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('sel', x === b));
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('show', x.id === 'v-' + view));
+  if (view === 'week'){ if (!editing) selDay = seoulNow().dow; renderWeek(seoulNow(), true); }
+  if (view === 'set') renderSettings();
+  window.scrollTo(0, 0);
+});
+
+function tick(){
+  const n = seoulNow();
+  renderHeader(n);
+  renderReminders(n);
+  renderNow(n);
+  if (view === 'week' && !editing) renderWeek(n);
+  checkAlarm(n);
+}
+tick();
+setInterval(tick, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
